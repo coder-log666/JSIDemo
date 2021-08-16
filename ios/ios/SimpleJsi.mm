@@ -4,7 +4,7 @@
 #import <jsi/jsi.h>
 #import "example.h"
 #import <sys/utsname.h>
-#include <jsi/jsi.h>
+#include "YeetJSIUtils.h"
 
 using namespace facebook::jsi;
 using namespace std;
@@ -56,6 +56,7 @@ RCT_EXPORT_MODULE()
     }
     
     example::install(*(facebook::jsi::Runtime *)cxxBridge.runtime);
+    install(*(facebook::jsi::Runtime *)cxxBridge.runtime, self);
 }
 
 - (void)calljs {
@@ -70,17 +71,78 @@ RCT_EXPORT_MODULE()
   jsiRuntime.global().getPropertyAsFunction(jsiRuntime, "jsMultiply").call(jsiRuntime, x, y);
 }
 
-- (char**)getArray: (NSArray *)a_array
-{
-    unsigned count = [a_array count];
-    char **array = (char **)malloc((count + 1) * sizeof(char*));
+- (NSString *)getModel {
+  
+  struct utsname systemInfo;
 
-    for (unsigned i = 0; i < count; i++)
-    {
-         array[i] = strdup([[a_array objectAtIndex:i] UTF8String]);
-    }
-    array[count] = NULL;
-    return array;
+  uname(&systemInfo);
+
+  return [NSString stringWithCString:systemInfo.machine
+                            encoding:NSUTF8StringEncoding];
+}
+
+- (void)setItem:(NSString *)key :(NSString *)value {
+
+  NSUserDefaults *standardUserDefaults = [NSUserDefaults standardUserDefaults];
+
+  [standardUserDefaults setObject:value forKey:key];
+
+  [standardUserDefaults synchronize];
+}
+
+- (NSString *)getItem:(NSString *)key {
+
+  NSUserDefaults *standardUserDefaults = [NSUserDefaults standardUserDefaults];
+
+  return [standardUserDefaults stringForKey:key];
+}
+
+
+static void install(facebook::jsi::Runtime &jsiRuntime, SimpleJsi *simpleJsi) {
+
+  auto getDeviceName = Function::createFromHostFunction(
+      jsiRuntime, PropNameID::forAscii(jsiRuntime, "getDeviceName"), 0,
+      [simpleJsi](Runtime &runtime, const Value &thisValue,
+                  const Value *arguments, size_t count) -> Value {
+
+    facebook::jsi::String deviceName =
+            convertNSStringToJSIString(runtime, [simpleJsi getModel]);
+
+        return Value(runtime, deviceName);
+      });
+  jsiRuntime.global().setProperty(jsiRuntime, "getDeviceName", move(getDeviceName));
+  
+  
+  auto setItem = Function::createFromHostFunction(
+      jsiRuntime, PropNameID::forAscii(jsiRuntime, "setItem"), 2,
+      [simpleJsi](Runtime &runtime, const Value &thisValue,
+                  const Value *arguments, size_t count) -> Value {
+        NSString *key =
+                  convertJSIStringToNSString(runtime, arguments[0].getString(runtime));
+        NSString *value =
+                  convertJSIStringToNSString(runtime, arguments[1].getString(runtime));
+
+        [simpleJsi setItem:key :value];
+
+        return Value(true);
+      });
+  jsiRuntime.global().setProperty(jsiRuntime, "setItem", move(setItem));
+  
+  
+  auto getItem = Function::createFromHostFunction(
+      jsiRuntime, PropNameID::forAscii(jsiRuntime, "getItem"), 0,
+      [simpleJsi](Runtime &runtime, const Value &thisValue,
+                  const Value *arguments, size_t count) -> Value {
+
+    NSString *key =
+              convertJSIStringToNSString(runtime, arguments[0].getString(runtime));
+    facebook::jsi::String value =
+            convertNSStringToJSIString(runtime, [simpleJsi getItem:key]);
+
+        return Value(runtime, value);
+      });
+  jsiRuntime.global().setProperty(jsiRuntime, "getItem", move(getItem));
+  
 }
 
 @end

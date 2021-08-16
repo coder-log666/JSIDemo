@@ -22,7 +22,12 @@ const App: () => Node = () => {
 
   const press = () => {
     // setResult(global.multiply(2, 2));
-    global.multiplyWithCallback(4, 5, alertResult);
+    // global.multiplyWithCallback(4, 5, alertResult);
+    // alert(global.getDeviceName());
+    global.setItem('RiverLi', '大前端');
+    setTimeout(() => {
+      alert(global.getItem('RiverLi'));
+    }, 300);
   };
 
   const alertResult = res => {

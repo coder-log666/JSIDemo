@@ -1,6 +1,5 @@
 #include "example.h"
 #include <jsi/jsi.h>
-
 using namespace facebook::jsi;
 using namespace std;
 
@@ -64,7 +63,6 @@ void install(Runtime &jsiRuntime) {
     });
     
     jsiRuntime.global().setProperty(jsiRuntime, "multiplyWithCallback", move(multiplyWithCallback));
-  
   
 }
 
